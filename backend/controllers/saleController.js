@@ -58,13 +58,25 @@ exports.create = async (req, res) => {
 
   if (!items || !items.length) return res.status(400).json({ message: 'At least one item required' });
 
-  // Stock availability check
+  // Resolve base_qty_deducted for each item (handles sale-unit conversion)
+  // sale_unit_factor: how much base stock 1 sale-unit consumes (e.g. 0.1 kg per 100g pack)
+  // If no sale unit → base_qty_deducted = quantity (original behaviour)
   for (const item of items) {
-    const [[product]] = await db.query('SELECT name, stock_qty FROM products WHERE id=?', [item.product_id]);
+    item.base_qty_deducted = item.sale_unit_factor
+      ? Number(item.quantity) * Number(item.sale_unit_factor)
+      : Number(item.quantity);
+  }
+
+  // Stock availability check (using base qty)
+  for (const item of items) {
+    const [[product]] = await db.query('SELECT name, stock_qty, unit FROM products WHERE id=?', [item.product_id]);
     if (!product) return res.status(400).json({ message: `Product ID ${item.product_id} not found` });
-    if (Number(product.stock_qty) < Number(item.quantity)) {
+    if (Number(product.stock_qty) < item.base_qty_deducted) {
+      const available = item.sale_unit_factor
+        ? `${(Number(product.stock_qty) / Number(item.sale_unit_factor)).toFixed(2)} × ${item.sale_unit_label} (${product.stock_qty} ${product.unit})`
+        : `${product.stock_qty} ${product.unit}`;
       return res.status(400).json({
-        message: `Insufficient stock for "${product.name}". Available: ${product.stock_qty}, Requested: ${item.quantity}`
+        message: `Insufficient stock for "${product.name}". Available: ${available}`
       });
     }
   }
@@ -89,13 +101,70 @@ exports.create = async (req, res) => {
     const saleId = sRes.insertId;
 
     for (const item of items) {
-      const total_price = item.quantity * item.unit_price - (item.discount || 0);
-      await conn.query(
-        'INSERT INTO sale_items (sale_id,product_id,quantity,unit_price,discount,total_price) VALUES (?,?,?,?,?,?)',
-        [saleId, item.product_id, item.quantity, item.unit_price, item.discount || 0, total_price]
+      const baseQty = item.base_qty_deducted;
+
+      // FIFO: consume from oldest batches first (using base qty)
+      const [batches] = await conn.query(
+        `SELECT * FROM stock_batches WHERE product_id=? AND qty_remaining > 0
+         ORDER BY purchase_date ASC, id ASC`,
+        [item.product_id]
       );
+
+      let remaining = baseQty;
+      let totalCostForItem = 0;
+      let totalQtyFromBatches = 0;
+      const consumptions = [];
+
+      for (const batch of batches) {
+        if (remaining <= 0) break;
+        const take = Math.min(remaining, Number(batch.qty_remaining));
+        consumptions.push({ batch_id: batch.id, qty_taken: take, unit_cost: Number(batch.unit_cost) });
+        totalCostForItem += take * Number(batch.unit_cost);
+        totalQtyFromBatches += take;
+        remaining -= take;
+      }
+
+      // Fallback for legacy stock with no batch records
+      let cost_price;
+      if (totalQtyFromBatches >= baseQty) {
+        cost_price = totalCostForItem / baseQty;
+      } else {
+        const [[prod]] = await conn.query('SELECT avg_cost, purchase_price FROM products WHERE id=?', [item.product_id]);
+        const fallback = Number(prod.avg_cost || prod.purchase_price || 0);
+        const legacyQty = baseQty - totalQtyFromBatches;
+        cost_price = (totalCostForItem + legacyQty * fallback) / baseQty;
+      }
+
+      const total_price = item.quantity * item.unit_price - (item.discount || 0);
+
+      // Insert sale item — quantity = sale packs sold, base_qty_deducted = actual stock consumed
+      const [siRes] = await conn.query(
+        `INSERT INTO sale_items
+         (sale_id,product_id,quantity,unit_price,discount,total_price,cost_price,
+          sale_unit_id,sale_unit_label,sale_unit_factor,base_qty_deducted)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [saleId, item.product_id, item.quantity, item.unit_price, item.discount || 0,
+         total_price, cost_price,
+         item.sale_unit_id || null, item.sale_unit_label || null,
+         item.sale_unit_factor || null, baseQty]
+      );
+      const saleItemId = siRes.insertId;
+
+      // Record batch consumptions and deduct from batches
+      for (const c of consumptions) {
+        await conn.query(
+          'INSERT INTO sale_items_batches (sale_item_id,batch_id,qty_taken,unit_cost) VALUES (?,?,?,?)',
+          [saleItemId, c.batch_id, c.qty_taken, c.unit_cost]
+        );
+        await conn.query(
+          'UPDATE stock_batches SET qty_remaining = qty_remaining - ? WHERE id=?',
+          [c.qty_taken, c.batch_id]
+        );
+      }
+
+      // Deduct base qty from product stock
       await conn.query('UPDATE products SET stock_qty = stock_qty - ? WHERE id=?',
-        [item.quantity, item.product_id]);
+        [baseQty, item.product_id]);
     }
 
     // Update customer balance if credit
@@ -177,6 +246,16 @@ exports.cancelSale = async (req, res) => {
     for (const item of items) {
       await conn.query('UPDATE products SET stock_qty = stock_qty + ? WHERE id=?',
         [item.quantity, item.product_id]);
+      // Restore batch quantities
+      const [sibs] = await conn.query(
+        'SELECT * FROM sale_items_batches WHERE sale_item_id=?', [item.id]
+      );
+      for (const sib of sibs) {
+        await conn.query(
+          'UPDATE stock_batches SET qty_remaining = qty_remaining + ? WHERE id=?',
+          [sib.qty_taken, sib.batch_id]
+        );
+      }
     }
     await conn.query('UPDATE sales SET status=? WHERE id=?', ['cancelled', req.params.id]);
     await conn.commit();

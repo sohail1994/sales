@@ -41,7 +41,11 @@ exports.getOne = async (req, res) => {
     [req.params.id]
   );
   if (!rows.length) return res.status(404).json({ message: 'Product not found' });
-  res.json(rows[0]);
+  const [saleUnits] = await db.query(
+    `SELECT * FROM product_sale_units WHERE product_id = ? AND is_active = 1 ORDER BY qty_in_base_unit ASC`,
+    [req.params.id]
+  );
+  res.json({ ...rows[0], sale_units: saleUnits });
 };
 
 exports.getByBarcode = async (req, res) => {
@@ -52,7 +56,11 @@ exports.getByBarcode = async (req, res) => {
     [req.params.barcode]
   );
   if (!rows.length) return res.status(404).json({ message: 'Product not found' });
-  res.json(rows[0]);
+  const [saleUnits] = await db.query(
+    `SELECT * FROM product_sale_units WHERE product_id = ? AND is_active = 1 ORDER BY qty_in_base_unit ASC`,
+    [rows[0].id]
+  );
+  res.json({ ...rows[0], sale_units: saleUnits });
 };
 
 exports.create = async (req, res) => {

@@ -76,13 +76,36 @@ exports.create = async (req, res) => {
 
     for (const item of items) {
       const total_price = item.quantity * item.unit_price;
-      await conn.query(
+      const [piRes] = await conn.query(
         'INSERT INTO purchase_items (purchase_id,product_id,quantity,unit_price,total_price) VALUES (?,?,?,?,?)',
         [purchaseId, item.product_id, item.quantity, item.unit_price, total_price]
       );
-      // Update stock
-      await conn.query('UPDATE products SET stock_qty = stock_qty + ? WHERE id=?',
-        [item.quantity, item.product_id]);
+      const purchaseItemId = piRes.insertId;
+
+      // Create stock batch for FIFO tracking
+      await conn.query(
+        `INSERT INTO stock_batches (product_id,purchase_id,purchase_item_id,purchase_date,unit_cost,qty_received,qty_remaining)
+         VALUES (?,?,?,?,?,?,?)`,
+        [item.product_id, purchaseId, purchaseItemId, purchase_date,
+         item.unit_price, item.quantity, item.quantity]
+      );
+
+      // Update stock_qty and avg_cost (Weighted Average Cost)
+      const [[prod]] = await conn.query(
+        'SELECT stock_qty, avg_cost FROM products WHERE id=?', [item.product_id]
+      );
+      const oldQty = Number(prod.stock_qty);
+      const oldAvg = Number(prod.avg_cost || 0);
+      const addQty = Number(item.quantity);
+      const newQty = oldQty + addQty;
+      const newAvg = newQty > 0
+        ? (oldQty * oldAvg + addQty * Number(item.unit_price)) / newQty
+        : Number(item.unit_price);
+
+      await conn.query(
+        'UPDATE products SET stock_qty = ?, avg_cost = ?, purchase_price = ? WHERE id=?',
+        [newQty, newAvg, item.unit_price, item.product_id]
+      );
     }
 
     await conn.commit();

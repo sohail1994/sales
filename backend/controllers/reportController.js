@@ -22,7 +22,9 @@ exports.getDashboard = async (req, res) => {
 
   // Top 5 products by qty sold this month
   const [topProducts] = await db.query(
-    `SELECT p.name, SUM(si.quantity) AS qty_sold, SUM(si.total_price) AS revenue
+    `SELECT p.name, p.unit,
+            SUM(COALESCE(si.base_qty_deducted, si.quantity)) AS qty_sold,
+            SUM(si.total_price) AS revenue
      FROM sale_items si
      JOIN sales s ON s.id=si.sale_id
      JOIN products p ON p.id=si.product_id
@@ -104,13 +106,13 @@ exports.getProfitLoss = async (req, res) => {
   if (from) { whereS += ' AND s.sale_date>=?'; whereD += ' AND d.damage_date>=?'; paramsS.push(from); paramsD.push(from); }
   if (to)   { whereS += ' AND s.sale_date<=?'; whereD += ' AND d.damage_date<=?'; paramsS.push(to);   paramsD.push(to); }
 
-  // Revenue & COGS from sales
+  // Revenue & COGS from sales using actual batch cost (cost_price stored at sale time)
+  // base_qty_deducted is the actual stock consumed in base units (handles pack-unit sales)
   const [[rev]] = await db.query(
     `SELECT COALESCE(SUM(si.total_price),0) AS revenue,
-            COALESCE(SUM(si.quantity * pr.purchase_price),0) AS cogs
+            COALESCE(SUM(COALESCE(si.base_qty_deducted, si.quantity) * si.cost_price),0) AS cogs
      FROM sale_items si
      JOIN sales s ON s.id=si.sale_id
-     JOIN products pr ON pr.id=si.product_id
      ${whereS}`,
     paramsS
   );
@@ -121,14 +123,13 @@ exports.getProfitLoss = async (req, res) => {
     paramsD
   );
 
-  // Monthly breakdown (sales)
+  // Monthly breakdown (sales) using actual batch cost
   const [monthly] = await db.query(
     `SELECT DATE_FORMAT(s.sale_date,'%Y-%m') AS month,
             SUM(si.total_price) AS revenue,
-            SUM(si.quantity * pr.purchase_price) AS cogs
+            SUM(COALESCE(si.base_qty_deducted, si.quantity) * si.cost_price) AS cogs
      FROM sale_items si
      JOIN sales s ON s.id=si.sale_id
-     JOIN products pr ON pr.id=si.product_id
      ${whereS}
      GROUP BY month ORDER BY month`,
     paramsS
@@ -170,8 +171,12 @@ exports.getProfitLoss = async (req, res) => {
 exports.getInventoryReport = async (req, res) => {
   const [rows] = await db.query(
     `SELECT p.id, p.name, p.barcode, p.sku, p.stock_qty, p.min_stock, p.unit,
-            p.purchase_price, p.sale_price,
-            (p.stock_qty * p.purchase_price) AS stock_value,
+            p.avg_cost AS purchase_price, p.sale_price,
+            COALESCE(
+              (SELECT SUM(sb.qty_remaining * sb.unit_cost)
+               FROM stock_batches sb WHERE sb.product_id = p.id),
+              p.stock_qty * p.avg_cost
+            ) AS stock_value,
             c.name AS category_name
      FROM products p
      LEFT JOIN categories c ON c.id=p.category_id
@@ -179,7 +184,7 @@ exports.getInventoryReport = async (req, res) => {
   );
   const [[summary]] = await db.query(
     `SELECT COUNT(*) AS products, SUM(stock_qty) AS total_units,
-            SUM(stock_qty*purchase_price) AS total_value,
+            SUM(stock_qty * avg_cost) AS total_value,
             SUM(CASE WHEN stock_qty<=min_stock THEN 1 ELSE 0 END) AS low_stock
      FROM products WHERE is_active=1`
   );
@@ -198,4 +203,55 @@ exports.getCustomerDue = async (req, res) => {
      ORDER BY due_amount DESC`
   );
   res.json(rows);
+};
+
+exports.getBatchReport = async (req, res) => {
+  const { product_id } = req.query;
+  let where = 'WHERE 1=1';
+  const params = [];
+  if (product_id) { where += ' AND sb.product_id=?'; params.push(product_id); }
+
+  const [rows] = await db.query(
+    `SELECT sb.id AS batch_id, sb.purchase_date, sb.unit_cost,
+            sb.qty_received, sb.qty_remaining,
+            (sb.qty_received - sb.qty_remaining) AS qty_sold,
+            p.name AS product_name, p.barcode,
+            pur.invoice_no AS purchase_invoice,
+            sup.name AS supplier_name
+     FROM stock_batches sb
+     JOIN products p ON p.id=sb.product_id
+     JOIN purchases pur ON pur.id=sb.purchase_id
+     LEFT JOIN suppliers sup ON sup.id=pur.supplier_id
+     ${where}
+     ORDER BY p.name, sb.purchase_date ASC, sb.id ASC`,
+    params
+  );
+  res.json(rows);
+};
+
+exports.getPurchaseBillReport = async (req, res) => {
+  const { invoice_no } = req.query;
+  if (!invoice_no) return res.status(400).json({ message: 'invoice_no required' });
+
+  const [[purchase]] = await db.query(
+    `SELECT pur.*, sup.name AS supplier_name FROM purchases pur
+     LEFT JOIN suppliers sup ON sup.id=pur.supplier_id
+     WHERE pur.invoice_no=?`,
+    [invoice_no]
+  );
+  if (!purchase) return res.status(404).json({ message: 'Purchase not found' });
+
+  const [items] = await db.query(
+    `SELECT sb.id AS batch_id, sb.unit_cost, sb.qty_received, sb.qty_remaining,
+            (sb.qty_received - sb.qty_remaining) AS qty_sold,
+            (sb.qty_remaining * sb.unit_cost) AS remaining_value,
+            ((sb.qty_received - sb.qty_remaining) * sb.unit_cost) AS sold_cost,
+            p.name AS product_name, p.barcode, p.sale_price
+     FROM stock_batches sb
+     JOIN products p ON p.id=sb.product_id
+     WHERE sb.purchase_id=?
+     ORDER BY p.name`,
+    [purchase.id]
+  );
+  res.json({ purchase, items });
 };

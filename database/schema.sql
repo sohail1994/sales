@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS products (
   sku VARCHAR(100) UNIQUE,
   purchase_price DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   sale_price DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  avg_cost DECIMAL(12,2) DEFAULT 0.00,
   stock_qty DECIMAL(12,2) DEFAULT 0.00,
   min_stock DECIMAL(12,2) DEFAULT 5.00,
   unit VARCHAR(50) DEFAULT 'pcs',
@@ -139,6 +140,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
   unit_price DECIMAL(12,2) NOT NULL,
   discount DECIMAL(12,2) DEFAULT 0.00,
   total_price DECIMAL(12,2) NOT NULL,
+  cost_price DECIMAL(12,2) DEFAULT 0.00,
   FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
@@ -186,9 +188,63 @@ CREATE TABLE IF NOT EXISTS damage_records (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Stock Batches (one row per purchase line, tracks remaining qty per batch for FIFO)
+CREATE TABLE IF NOT EXISTS stock_batches (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  purchase_id INT NOT NULL,
+  purchase_item_id INT NOT NULL,
+  purchase_date DATE NOT NULL,
+  unit_cost DECIMAL(12,2) NOT NULL,
+  qty_received DECIMAL(12,2) NOT NULL,
+  qty_remaining DECIMAL(12,2) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
+  FOREIGN KEY (purchase_item_id) REFERENCES purchase_items(id) ON DELETE CASCADE
+);
+
+-- Sale Items Batches (links each sale item to exact batch(es) consumed via FIFO)
+CREATE TABLE IF NOT EXISTS sale_items_batches (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  sale_item_id INT NOT NULL,
+  batch_id INT NOT NULL,
+  qty_taken DECIMAL(12,2) NOT NULL,
+  unit_cost DECIMAL(12,2) NOT NULL,
+  FOREIGN KEY (sale_item_id) REFERENCES sale_items(id) ON DELETE CASCADE,
+  FOREIGN KEY (batch_id) REFERENCES stock_batches(id) ON DELETE CASCADE
+);
+
+-- Product Sale Units (sell by fractional weight/volume, e.g. 100g, 200g, 500g from 1 kg base)
+CREATE TABLE IF NOT EXISTS product_sale_units (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  label VARCHAR(100) NOT NULL,              -- e.g. "100g", "Half KG", "200ml"
+  qty_in_base_unit DECIMAL(12,4) NOT NULL, -- e.g. 0.1 means 100g when base unit is kg
+  sale_price DECIMAL(12,2) NOT NULL,        -- price for this pack size
+  is_default TINYINT(1) DEFAULT 0,          -- pre-selected in sale form
+  is_active TINYINT(1) DEFAULT 1,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- Migration helpers (run these on existing databases only)
+-- ALTER TABLE products ADD COLUMN IF NOT EXISTS avg_cost DECIMAL(12,2) DEFAULT 0.00;
+-- ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS cost_price DECIMAL(12,2) DEFAULT 0.00;
+-- ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS sale_unit_id INT NULL;
+-- ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS sale_unit_label VARCHAR(100) NULL;
+-- ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS sale_unit_factor DECIMAL(12,4) NULL;
+-- ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS base_qty_deducted DECIMAL(12,4) NULL;
+-- ============================================================
+
 -- ============================================================
 -- Default Data
 -- ============================================================
+
+-- Default admin user  (password: Admin@123)
+INSERT IGNORE INTO users (name, email, password, role, is_active) VALUES
+  ('Administrator', 'admin@shop.com', '$2a$10$KbRW3UBhF26ks5Re/GX4d.rpEXfetiPFzEeKLsLW5SbD7pYLD7Py2', 'admin', 1);
+
 INSERT IGNORE INTO categories (name, description) VALUES
   ('Electronics', 'Electronic gadgets and devices'),
   ('Clothing', 'Clothes and apparel'),
