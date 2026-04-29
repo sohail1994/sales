@@ -62,14 +62,14 @@ export default function Dashboard() {
       <h5 className="fw-bold mb-4"><i className="bi bi-speedometer2 me-2" />Dashboard</h5>
 
       <div className="row">
-        <Stat icon="cart-check"  label="Today's Sales"      value={`$${fmt(data.today_sales)}`}     color="primary" />
-        <Stat icon="graph-up"    label="Month Sales"        value={`$${fmt(data.month_sales)}`}     color="success" />
-        <Stat icon="bag-plus"    label="Today Purchases"    value={`$${fmt(data.today_purchases)}`} color="warning" />
-        <Stat icon="exclamation-circle" label="Total Due"  value={`$${fmt(data.total_due)}`}        color="danger" />
+        <Stat icon="cart-check"  label="Today's Sales"      value={`₹${fmt(data.today_sales)}`}     color="primary" />
+        <Stat icon="graph-up"    label="Month Sales"        value={`₹${fmt(data.month_sales)}`}     color="success" />
+        <Stat icon="bag-plus"    label="Today Purchases"    value={`₹${fmt(data.today_purchases)}`} color="warning" />
+        <Stat icon="exclamation-circle" label="Total Due"  value={`₹${fmt(data.total_due)}`}        color="danger" />
         <Stat icon="people"      label="Total Customers"    value={data.total_customers}             color="info" />
         <Stat icon="box-seam"    label="Total Products"     value={data.total_products}              color="secondary" />
         <Stat icon="exclamation-triangle" label="Low Stock" value={data.low_stock_count}             color="danger" />
-        <Stat icon="shop"        label="Month Purchases"    value={`$${fmt(data.month_purchases)}`} color="dark" />
+        <Stat icon="shop"        label="Month Purchases"    value={`₹${fmt(data.month_purchases)}`} color="dark" />
       </div>
 
       <div className="row mt-3">

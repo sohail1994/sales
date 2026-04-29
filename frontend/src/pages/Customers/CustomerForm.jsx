@@ -95,7 +95,7 @@ export default function CustomerForm() {
               <div className="col-md-6">
                 <label className="form-label">Credit Limit</label>
                 <div className="input-group">
-                  <span className="input-group-text">$</span>
+                  <span className="input-group-text">₹</span>
                   <input className="form-control" type="number" min="0" step="0.01" value={form.credit_limit}
                     onChange={e => setForm({ ...form, credit_limit: e.target.value })} />
                 </div>

@@ -3,6 +3,20 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
+const downloadSalePDF = async (s) => {
+  try {
+    const { data } = await api.get(`/sales/${s.id}/invoice-pdf`, { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${s.invoice_no}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error('Failed to download PDF');
+  }
+};
+
 const StatusBadge = ({ s }) => {
   const map = { paid:'bg-success', partial:'bg-warning text-dark', pending:'bg-danger', cancelled:'bg-secondary' };
   return <span className={`badge ${map[s] || 'bg-secondary'}`}>{s}</span>;
@@ -84,10 +98,10 @@ export default function SaleList() {
                     <td><Link to={`/sales/${s.id}`} className="fw-semibold text-primary">{s.invoice_no}</Link></td>
                     <td>{s.sale_date}</td>
                     <td>{s.customer_name || <em className="text-muted">Walk-in</em>}</td>
-                    <td>${Number(s.total_amount).toFixed(2)}</td>
-                    <td className="text-success">${Number(s.paid_amount).toFixed(2)}</td>
+                    <td>₹{Number(s.total_amount).toFixed(2)}</td>
+                    <td className="text-success">₹{Number(s.paid_amount).toFixed(2)}</td>
                     <td className={Number(s.due_amount) > 0 ? 'text-danger fw-semibold' : ''}>
-                      ${Number(s.due_amount).toFixed(2)}
+                      ₹{Number(s.due_amount).toFixed(2)}
                     </td>
                     <td className="text-capitalize">{s.payment_method}</td>
                     <td><StatusBadge s={s.status} /></td>
@@ -95,10 +109,9 @@ export default function SaleList() {
                       <Link to={`/sales/${s.id}`} className="btn btn-sm btn-outline-primary me-1">
                         <i className="bi bi-eye" />
                       </Link>
-                      <a href={`http://localhost:5000/api/sales/${s.id}/invoice-pdf`}
-                         target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-secondary me-1">
+                      <button onClick={() => downloadSalePDF(s)} className="btn btn-sm btn-outline-secondary me-1" title="Download PDF">
                         <i className="bi bi-file-pdf" />
-                      </a>
+                      </button>
                       {s.status !== 'cancelled' && (
                         <button onClick={() => cancel(s.id)} className="btn btn-sm btn-outline-danger">
                           <i className="bi bi-x-circle" />
@@ -118,7 +131,7 @@ export default function SaleList() {
             <nav>
               <ul className="pagination pagination-sm justify-content-end">
                 {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
-                  <li key={p} className={`page-item ${p === page ? 'active' : ''}`}>
+                  <li key={p} className={`page-item ₹{p === page ? 'active' : ''}`}>
                     <button className="page-link" onClick={() => setPage(p)}>{p}</button>
                   </li>
                 ))}

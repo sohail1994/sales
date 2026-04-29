@@ -67,10 +67,10 @@ export default function PurchaseList() {
                     </td>
                     <td>{p.purchase_date}</td>
                     <td>{p.supplier_name || '-'}</td>
-                    <td>${Number(p.total_amount).toFixed(2)}</td>
-                    <td className="text-success">${Number(p.paid_amount).toFixed(2)}</td>
+                    <td>₹{Number(p.total_amount).toFixed(2)}</td>
+                    <td className="text-success">₹{Number(p.paid_amount).toFixed(2)}</td>
                     <td className={Number(p.due_amount) > 0 ? 'text-danger fw-semibold' : ''}>
-                      ${Number(p.due_amount).toFixed(2)}
+                      ₹{Number(p.due_amount).toFixed(2)}
                     </td>
                     <td><StatusBadge s={p.status} /></td>
                     <td>

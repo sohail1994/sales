@@ -36,13 +36,14 @@ export default function NewPurchase() {
     setItems(prev => {
       const idx = prev.findIndex(i => i.product_id === p.id);
       if (idx >= 0) {
-        const next = [...prev];
-        next[idx].quantity += 1;
-        next[idx].total_price = next[idx].quantity * next[idx].unit_price;
-        return next;
+        const newQty = prev[idx].quantity + 1;
+        return prev.map((it, i) => i !== idx ? it : {
+          ...it, quantity: newQty, total_price: newQty * it.unit_price
+        });
       }
       return [...prev, {
         product_id: p.id, name: p.name, barcode: p.barcode,
+        unit: p.unit || 'pcs',
         unit_price: Number(p.purchase_price), quantity: 1,
         total_price: Number(p.purchase_price)
       }];
@@ -52,12 +53,13 @@ export default function NewPurchase() {
   };
 
   const updateItem = (idx, field, val) => {
-    setItems(prev => {
-      const next = [...prev];
-      next[idx][field] = Number(val);
-      next[idx].total_price = next[idx].quantity * next[idx].unit_price;
-      return next;
-    });
+    setItems(prev => prev.map((it, i) => {
+      if (i !== idx) return it;
+      // Keep raw string while user is typing so clearing the field doesn't snap to 0
+      const updated = { ...it, [field]: val === '' ? '' : Number(val) };
+      updated.total_price = (Number(updated.quantity) || 0) * (Number(updated.unit_price) || 0);
+      return updated;
+    }));
   };
 
   const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
@@ -104,7 +106,7 @@ export default function NewPurchase() {
                           onClick={() => addProduct(p)}>
                           <div className="d-flex justify-content-between">
                             <span>{p.name}</span>
-                            <span className="badge bg-secondary">${Number(p.purchase_price).toFixed(2)}</span>
+                            <span className="badge bg-secondary">₹{Number(p.purchase_price).toFixed(2)}</span>
                           </div>
                           <small className="text-muted">Stock: {p.stock_qty} | Barcode: {p.barcode}</small>
                         </button>
@@ -127,16 +129,21 @@ export default function NewPurchase() {
                             <small className="text-muted font-monospace">{item.barcode}</small>
                           </td>
                           <td>
-                            <input type="number" min="0.01" step="0.01" className="form-control form-control-sm"
-                              style={{ width: 80 }} value={item.quantity}
-                              onChange={e => updateItem(i, 'quantity', e.target.value)} />
+                            <div className="input-group input-group-sm" style={{ width: 130 }}>
+                              <input type="number" min="1" step="1" className="form-control"
+                                value={item.quantity}
+                                onFocus={e => e.target.select()}
+                                onChange={e => updateItem(i, 'quantity', e.target.value)} />
+                              <span className="input-group-text">{item.unit}</span>
+                            </div>
                           </td>
                           <td>
                             <input type="number" min="0" step="0.01" className="form-control form-control-sm"
                               style={{ width: 90 }} value={item.unit_price}
+                              onFocus={e => e.target.select()}
                               onChange={e => updateItem(i, 'unit_price', e.target.value)} />
                           </td>
-                          <td><strong>${item.total_price.toFixed(2)}</strong></td>
+                          <td><strong>₹{item.total_price.toFixed(2)}</strong></td>
                           <td>
                             <button type="button" className="btn btn-sm btn-outline-danger"
                               onClick={() => removeItem(i)}>
@@ -185,7 +192,7 @@ export default function NewPurchase() {
 
                 <hr />
                 <div className="d-flex justify-content-between mb-1">
-                  <span>Subtotal</span><strong>${subtotal.toFixed(2)}</strong>
+                  <span>Subtotal</span><strong>₹{subtotal.toFixed(2)}</strong>
                 </div>
                 <div className="d-flex align-items-center mb-1">
                   <span className="me-auto">Discount</span>
@@ -204,7 +211,7 @@ export default function NewPurchase() {
                 </div>
                 <hr />
                 <div className="d-flex justify-content-between mb-1 fw-bold fs-5">
-                  <span>Total</span><span>${total.toFixed(2)}</span>
+                  <span>Total</span><span>₹{total.toFixed(2)}</span>
                 </div>
                 <div className="d-flex align-items-center mb-1">
                   <span className="me-auto text-success fw-semibold">Paid</span>
@@ -213,7 +220,7 @@ export default function NewPurchase() {
                 </div>
                 <div className="d-flex justify-content-between mb-3">
                   <span className="text-danger fw-semibold">Due</span>
-                  <strong className="text-danger">${Math.max(0, due).toFixed(2)}</strong>
+                  <strong className="text-danger">₹{Math.max(0, due).toFixed(2)}</strong>
                 </div>
                 <div className="mb-3">
                   <label className="form-label small">Notes</label>

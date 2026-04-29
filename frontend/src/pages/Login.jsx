@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: 'admin@shop.com', password: 'admin123' });
+  const [form, setForm] = useState({ email: 'admin@shop.com', password: 'Admin@123' });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {

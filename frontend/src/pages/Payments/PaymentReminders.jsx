@@ -93,7 +93,7 @@ export default function PaymentReminders() {
                     <td><strong>{r.customer_name || '-'}</strong></td>
                     <td>{r.customer_phone || '-'}</td>
                     <td>{r.invoice_no || '-'}</td>
-                    <td className="fw-semibold text-danger">${Number(r.amount).toFixed(2)}</td>
+                    <td className="fw-semibold text-danger">₹{Number(r.amount).toFixed(2)}</td>
                     <td>
                       {r.due_date}
                       {overdue(r.due_date) && r.status === 'pending' && (
@@ -170,7 +170,7 @@ export default function PaymentReminders() {
                         <option value="">-- Select Invoice --</option>
                         {sales.map(s => (
                           <option key={s.id} value={s.id}>
-                            {s.invoice_no} — Due: ${Number(s.due_amount).toFixed(2)}
+                            {s.invoice_no} — Due: ₹{Number(s.due_amount).toFixed(2)}
                           </option>
                         ))}
                       </select>
@@ -179,7 +179,7 @@ export default function PaymentReminders() {
                   <div className="col-md-6">
                     <label className="form-label">Amount *</label>
                     <div className="input-group">
-                      <span className="input-group-text">$</span>
+                      <span className="input-group-text">₹</span>
                       <input type="number" className="form-control" min="0.01" step="0.01" required
                         value={form.amount}
                         onChange={e => setForm({ ...form, amount: e.target.value })} />

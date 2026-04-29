@@ -25,9 +25,9 @@ export default function InventoryReport() {
       body: report.data.map(p => [
         p.name, p.barcode || '', p.category_name || '',
         p.stock_qty, p.min_stock, p.unit,
-        `$${Number(p.purchase_price).toFixed(2)}`,
-        `$${Number(p.sale_price).toFixed(2)}`,
-        `$${Number(p.stock_value).toFixed(2)}`
+        `₹${Number(p.purchase_price).toFixed(2)}`,
+        `₹${Number(p.sale_price).toFixed(2)}`,
+        `₹${Number(p.stock_value).toFixed(2)}`
       ]),
     });
     doc.save('inventory-report.pdf');
@@ -57,7 +57,7 @@ export default function InventoryReport() {
             {[
               { label: 'Total Products', val: report.summary.products, color: 'primary' },
               { label: 'Total Units', val: Number(report.summary.total_units || 0).toFixed(0), color: 'info' },
-              { label: 'Total Stock Value', val: `$${Number(report.summary.total_value || 0).toFixed(2)}`, color: 'success' },
+              { label: 'Total Stock Value', val: `₹${Number(report.summary.total_value || 0).toFixed(2)}`, color: 'success' },
               { label: 'Low Stock Items', val: report.summary.low_stock, color: 'danger' },
             ].map((s, i) => (
               <div key={i} className="col-md-3">
@@ -95,16 +95,16 @@ export default function InventoryReport() {
                         </td>
                         <td>{p.min_stock}</td>
                         <td>{p.unit}</td>
-                        <td>${Number(p.purchase_price).toFixed(2)}</td>
-                        <td>${Number(p.sale_price).toFixed(2)}</td>
-                        <td className="fw-semibold">${Number(p.stock_value).toFixed(2)}</td>
+                        <td>₹{Number(p.purchase_price).toFixed(2)}</td>
+                        <td>₹{Number(p.sale_price).toFixed(2)}</td>
+                        <td className="fw-semibold">₹{Number(p.stock_value).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="table-light fw-bold">
                     <tr>
                       <td colSpan={8} className="text-end">Total Stock Value:</td>
-                      <td>${Number(report.summary.total_value || 0).toFixed(2)}</td>
+                      <td>₹{Number(report.summary.total_value || 0).toFixed(2)}</td>
                     </tr>
                   </tfoot>
                 </table>

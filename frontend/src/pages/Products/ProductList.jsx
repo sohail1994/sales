@@ -102,8 +102,8 @@ export default function ProductList() {
                       </a>
                     </td>
                     <td>{p.category_name || '-'}</td>
-                    <td>${Number(p.purchase_price).toFixed(2)}</td>
-                    <td>${Number(p.sale_price).toFixed(2)}</td>
+                    <td>₹{Number(p.purchase_price).toFixed(2)}</td>
+                    <td>₹{Number(p.sale_price).toFixed(2)}</td>
                     <td>
                       <span className={`badge ${p.stock_qty <= p.min_stock ? 'bg-danger' : 'bg-success'}`}>
                         {p.stock_qty} {p.unit}

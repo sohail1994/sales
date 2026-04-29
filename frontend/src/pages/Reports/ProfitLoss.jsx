@@ -25,7 +25,7 @@ export default function ProfitLoss() {
     setLoading(false);
   };
 
-  const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
+  const fmt = (n) => `₹${Number(n || 0).toFixed(2)}`;
 
   const chartData = report ? {
     labels: report.monthly.map(m => m.month),

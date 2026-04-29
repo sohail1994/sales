@@ -49,7 +49,7 @@ export default function Payments() {
           </div>
 
           <div className="alert alert-info py-2 mb-3">
-            <strong>Showing {payments.length} records</strong> — Total Collected: <strong>${totalAmount.toFixed(2)}</strong>
+            <strong>Showing {payments.length} records</strong> — Total Collected: <strong>₹{totalAmount.toFixed(2)}</strong>
           </div>
 
           <div className="table-responsive">
@@ -65,12 +65,12 @@ export default function Payments() {
                   <tr key={p.id}>
                     <td>{(page - 1) * LIMIT + i + 1}</td>
                     <td>
-                      <span className={`badge ${p.reference_type === 'sale' ? 'bg-success' : 'bg-primary'}`}>
+                      <span className={`badge ${p.method === 'cash' ? 'bg-success' : p.method === 'credit' ? 'bg-warning text-dark' : 'bg-info'}`}>
                         {p.reference_type}
                       </span>
                     </td>
                     <td>#{p.reference_id}</td>
-                    <td className="fw-semibold text-success">${Number(p.amount).toFixed(2)}</td>
+                    <td className="fw-semibold text-success">₹{Number(p.amount).toFixed(2)}</td>
                     <td className="text-capitalize">{p.payment_method}</td>
                     <td>{p.payment_date}</td>
                     <td>{p.notes || '-'}</td>
@@ -87,7 +87,7 @@ export default function Payments() {
             <nav>
               <ul className="pagination pagination-sm justify-content-end">
                 {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
-                  <li key={p} className={`page-item ${p === page ? 'active' : ''}`}>
+                  <li key={p} className={`page-item ${pg === page ? 'active' : ''}`}>
                     <button className="page-link" onClick={() => setPage(p)}>{p}</button>
                   </li>
                 ))}

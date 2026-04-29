@@ -31,7 +31,7 @@ export default function PurchaseDetail() {
   };
 
   if (!purchase) return <div className="text-center py-5"><span className="spinner-border" /></div>;
-  const fmt = (n) => `$${Number(n).toFixed(2)}`;
+  const fmt = (n) => `₹${Number(n).toFixed(2)}`;
 
   return (
     <div>
@@ -120,7 +120,7 @@ export default function PurchaseDetail() {
                   <div className="col-12">
                     <label className="form-label">Amount *</label>
                     <div className="input-group">
-                      <span className="input-group-text">$</span>
+                      <span className="input-group-text">₹</span>
                       <input type="number" className="form-control" min="0.01" step="0.01" required
                         value={payForm.amount}
                         onChange={e => setPayForm({ ...payForm, amount: e.target.value })} />

@@ -4,7 +4,7 @@ import api from '../../services/api';
 
 const today = () => new Date().toISOString().split('T')[0];
 const REASONS = ['damaged', 'expired', 'stolen', 'lost', 'other'];
-const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
+const fmt = (n) => `₹${Number(n || 0).toFixed(2)}`;
 
 export default function Damages() {
   const [records, setRecords]     = useState([]);

@@ -36,15 +36,15 @@ export default function SalesReport() {
       head: [['Invoice', 'Date', 'Customer', 'Total', 'Paid', 'Due', 'Method', 'Status']],
       body: report.data.map(s => [
         s.invoice_no, s.sale_date, s.customer_name || 'Walk-in',
-        `$${Number(s.total_amount).toFixed(2)}`,
-        `$${Number(s.paid_amount).toFixed(2)}`,
-        `$${Number(s.due_amount).toFixed(2)}`,
+        `₹${Number(s.total_amount).toFixed(2)}`,
+        `₹${Number(s.paid_amount).toFixed(2)}`,
+        `₹${Number(s.due_amount).toFixed(2)}`,
         s.payment_method, s.status
       ]),
       foot: [['', '', 'TOTAL',
-        `$${Number(report.summary.total).toFixed(2)}`,
-        `$${Number(report.summary.paid).toFixed(2)}`,
-        `$${Number(report.summary.due).toFixed(2)}`, '', ''
+        `₹${Number(report.summary.total).toFixed(2)}`,
+        `₹${Number(report.summary.paid).toFixed(2)}`,
+        `₹${Number(report.summary.due).toFixed(2)}`, '', ''
       ]],
     });
     doc.save(`sales-report-${filters.from}-${filters.to}.pdf`);
@@ -121,9 +121,9 @@ export default function SalesReport() {
           <div className="row g-3 mb-3">
             {[
               { label: 'Total Invoices', val: report.summary.count, color: 'primary' },
-              { label: 'Total Amount', val: `$${Number(report.summary.total).toFixed(2)}`, color: 'success' },
-              { label: 'Total Paid', val: `$${Number(report.summary.paid).toFixed(2)}`, color: 'info' },
-              { label: 'Total Due', val: `$${Number(report.summary.due).toFixed(2)}`, color: 'danger' },
+              { label: 'Total Amount', val: `₹${Number(report.summary.total).toFixed(2)}`, color: 'success' },
+              { label: 'Total Paid', val: `₹${Number(report.summary.paid).toFixed(2)}`, color: 'info' },
+              { label: 'Total Due', val: `₹${Number(report.summary.due).toFixed(2)}`, color: 'danger' },
             ].map((s, i) => (
               <div key={i} className="col-md-3">
                 <div className={`card border-${s.color} border-2`}>
@@ -157,9 +157,9 @@ export default function SalesReport() {
                         <td className="fw-semibold">{s.invoice_no}</td>
                         <td>{s.sale_date}</td>
                         <td>{s.customer_name || 'Walk-in'}</td>
-                        <td>${Number(s.total_amount).toFixed(2)}</td>
-                        <td className="text-success">${Number(s.paid_amount).toFixed(2)}</td>
-                        <td className={Number(s.due_amount) > 0 ? 'text-danger' : ''}>${Number(s.due_amount).toFixed(2)}</td>
+                        <td>₹{Number(s.total_amount).toFixed(2)}</td>
+                        <td className="text-success">₹{Number(s.paid_amount).toFixed(2)}</td>
+                        <td className={Number(s.due_amount) > 0 ? 'text-danger' : ''}>₹{Number(s.due_amount).toFixed(2)}</td>
                         <td className="text-capitalize">{s.payment_method}</td>
                         <td><span className={`badge bg-${s.status === 'paid' ? 'success' : s.status === 'partial' ? 'warning text-dark' : 'danger'}`}>{s.status}</span></td>
                       </tr>

@@ -27,9 +27,9 @@ export default function PurchaseReport() {
       head: [['Invoice', 'Date', 'Supplier', 'Total', 'Paid', 'Due', 'Status']],
       body: report.data.map(p => [
         p.invoice_no, p.purchase_date, p.supplier_name || '-',
-        `$${Number(p.total_amount).toFixed(2)}`,
-        `$${Number(p.paid_amount).toFixed(2)}`,
-        `$${Number(p.due_amount).toFixed(2)}`,
+        `₹${Number(p.total_amount).toFixed(2)}`,
+        `₹${Number(p.paid_amount).toFixed(2)}`,
+        `₹${Number(p.due_amount).toFixed(2)}`,
         p.status
       ]),
     });
@@ -82,9 +82,9 @@ export default function PurchaseReport() {
           <div className="row g-3 mb-3">
             {[
               { label: 'Total Invoices', val: report.summary.count, color: 'primary' },
-              { label: 'Total Amount', val: `$${Number(report.summary.total).toFixed(2)}`, color: 'warning' },
-              { label: 'Total Paid', val: `$${Number(report.summary.paid).toFixed(2)}`, color: 'success' },
-              { label: 'Total Due', val: `$${Number(report.summary.due).toFixed(2)}`, color: 'danger' },
+              { label: 'Total Amount', val: `₹${Number(report.summary.total).toFixed(2)}`, color: 'warning' },
+              { label: 'Total Paid', val: `₹${Number(report.summary.paid).toFixed(2)}`, color: 'success' },
+              { label: 'Total Due', val: `₹${Number(report.summary.due).toFixed(2)}`, color: 'danger' },
             ].map((s, i) => (
               <div key={i} className="col-md-3">
                 <div className={`card border-${s.color} border-2`}>
@@ -109,9 +109,9 @@ export default function PurchaseReport() {
                         <td className="fw-semibold">{p.invoice_no}</td>
                         <td>{p.purchase_date}</td>
                         <td>{p.supplier_name || '-'}</td>
-                        <td>${Number(p.total_amount).toFixed(2)}</td>
-                        <td className="text-success">${Number(p.paid_amount).toFixed(2)}</td>
-                        <td className={Number(p.due_amount) > 0 ? 'text-danger' : ''}>${Number(p.due_amount).toFixed(2)}</td>
+                        <td>₹{Number(p.total_amount).toFixed(2)}</td>
+                        <td className="text-success">₹{Number(p.paid_amount).toFixed(2)}</td>
+                        <td className={Number(p.due_amount) > 0 ? 'text-danger' : ''}>₹{Number(p.due_amount).toFixed(2)}</td>
                         <td><span className={`badge bg-${p.status === 'paid' ? 'success' : p.status === 'partial' ? 'warning text-dark' : 'danger'}`}>{p.status}</span></td>
                       </tr>
                     ))}

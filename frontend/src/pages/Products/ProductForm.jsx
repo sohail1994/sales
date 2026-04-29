@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
+const BLANK_UNIT = { label: '', qty_in_base_unit: '', sale_price: '', is_default: false };
+
 export default function ProductForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -16,6 +18,12 @@ export default function ProductForm() {
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Sale units state
+  const [saleUnits, setSaleUnits] = useState([]);
+  const [newUnit, setNewUnit] = useState(BLANK_UNIT);
+  const [editingUnit, setEditingUnit] = useState(null); // { idx, data }
+  const [suLoading, setSuLoading] = useState(false);
 
   useEffect(() => {
     api.get('/categories').then(r => setCategories(r.data));
@@ -31,6 +39,7 @@ export default function ProductForm() {
           unit: p.unit, barcode: p.barcode||'', sku: p.sku||''
         });
         if (p.image) setPreview(`http://localhost:5000${p.image}`);
+        if (p.sale_units) setSaleUnits(p.sale_units);
       });
     }
   }, [id]);
@@ -66,6 +75,51 @@ export default function ProductForm() {
   };
 
   const f = (k) => ({ value: form[k], onChange: e => setForm({ ...form, [k]: e.target.value }) });
+
+  /* ── Sale unit helpers ─────────────────────────────── */
+  const addSaleUnit = async () => {
+    if (!newUnit.label || !newUnit.qty_in_base_unit || !newUnit.sale_price) {
+      return toast.error('Fill label, qty and price');
+    }
+    setSuLoading(true);
+    try {
+      await api.post(`/products/${id}/sale-units`, newUnit);
+      const { data } = await api.get(`/products/${id}/sale-units`);
+      setSaleUnits(data);
+      setNewUnit(BLANK_UNIT);
+      toast.success('Sale unit added');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Error');
+    } finally { setSuLoading(false); }
+  };
+
+  const startEditUnit = (u) => setEditingUnit({ id: u.id, data: { ...u } });
+
+  const saveEditUnit = async () => {
+    if (!editingUnit) return;
+    setSuLoading(true);
+    try {
+      await api.put(`/products/${id}/sale-units/${editingUnit.id}`, editingUnit.data);
+      const { data } = await api.get(`/products/${id}/sale-units`);
+      setSaleUnits(data);
+      setEditingUnit(null);
+      toast.success('Sale unit updated');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Error');
+    } finally { setSuLoading(false); }
+  };
+
+  const removeUnit = async (unitId) => {
+    if (!window.confirm('Remove this sale unit?')) return;
+    setSuLoading(true);
+    try {
+      await api.delete(`/products/${id}/sale-units/${unitId}`);
+      setSaleUnits(prev => prev.filter(u => u.id !== unitId));
+      toast.success('Sale unit removed');
+    } catch (e) {
+      toast.error('Error removing');
+    } finally { setSuLoading(false); }
+  };
 
   return (
     <div>
@@ -133,14 +187,14 @@ export default function ProductForm() {
               <div className="col-md-4">
                 <label className="form-label">Purchase Price *</label>
                 <div className="input-group">
-                  <span className="input-group-text">$</span>
+                  <span className="input-group-text">₹</span>
                   <input className="form-control" type="number" min="0" step="0.01" required {...f('purchase_price')} />
                 </div>
               </div>
               <div className="col-md-4">
                 <label className="form-label">Sale Price *</label>
                 <div className="input-group">
-                  <span className="input-group-text">$</span>
+                  <span className="input-group-text">₹</span>
                   <input className="form-control" type="number" min="0" step="0.01" required {...f('sale_price')} />
                 </div>
               </div>
@@ -161,6 +215,119 @@ export default function ProductForm() {
                 <textarea className="form-control" rows={2} {...f('description')} />
               </div>
             </div>
+
+            {/* ── Sale Units (fractional selling) ─────────────── */}
+            {id && (
+              <div className="mt-4">
+                <h6 className="fw-semibold mb-2">
+                  <i className="bi bi-rulers me-1 text-primary" />
+                  Sale Units
+                  <small className="text-muted fw-normal ms-2">
+                    — define pack sizes (e.g. 100g, 200g) sold from base stock ({form.unit})
+                  </small>
+                </h6>
+
+                {saleUnits.length > 0 && (
+                  <div className="table-responsive mb-3">
+                    <table className="table table-sm table-bordered align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Label</th>
+                          <th>Qty in {form.unit}</th>
+                          <th>Sale Price</th>
+                          <th>Default</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {saleUnits.map(u => (
+                          <tr key={u.id}>
+                            {editingUnit?.id === u.id ? (
+                              <>
+                                <td><input className="form-control form-control-sm" value={editingUnit.data.label}
+                                  onChange={e => setEditingUnit(ev => ({ ...ev, data: { ...ev.data, label: e.target.value } }))} /></td>
+                                <td><input type="number" step="0.0001" min="0.0001" className="form-control form-control-sm"
+                                  style={{ width: 90 }} value={editingUnit.data.qty_in_base_unit}
+                                  onChange={e => setEditingUnit(ev => ({ ...ev, data: { ...ev.data, qty_in_base_unit: e.target.value } }))} /></td>
+                                <td><input type="number" step="0.01" min="0" className="form-control form-control-sm"
+                                  style={{ width: 90 }} value={editingUnit.data.sale_price}
+                                  onChange={e => setEditingUnit(ev => ({ ...ev, data: { ...ev.data, sale_price: e.target.value } }))} /></td>
+                                <td className="text-center">
+                                  <input type="checkbox" checked={!!editingUnit.data.is_default}
+                                    onChange={e => setEditingUnit(ev => ({ ...ev, data: { ...ev.data, is_default: e.target.checked } }))} />
+                                </td>
+                                <td>
+                                  <button type="button" className="btn btn-sm btn-success me-1" onClick={saveEditUnit} disabled={suLoading}>Save</button>
+                                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setEditingUnit(null)}>Cancel</button>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="fw-semibold">{u.label}</td>
+                                <td>{u.qty_in_base_unit} {form.unit}</td>
+                                <td>₹{Number(u.sale_price).toFixed(2)}</td>
+                                <td className="text-center">{u.is_default ? <span className="badge bg-success">Yes</span> : ''}</td>
+                                <td>
+                                  <button type="button" className="btn btn-sm btn-outline-primary me-1" onClick={() => startEditUnit(u)}>
+                                    <i className="bi bi-pencil" />
+                                  </button>
+                                  <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => removeUnit(u.id)} disabled={suLoading}>
+                                    <i className="bi bi-trash" />
+                                  </button>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Add new sale unit row */}
+                <div className="card bg-light border-0 p-3">
+                  <div className="row g-2 align-items-end">
+                    <div className="col-md-3">
+                      <label className="form-label small mb-1">Label <span className="text-muted">(e.g. 100g, Half KG)</span></label>
+                      <input className="form-control form-control-sm" value={newUnit.label}
+                        onChange={e => setNewUnit(n => ({ ...n, label: e.target.value }))} placeholder="100g" />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label small mb-1">Qty in {form.unit} <span className="text-muted">(e.g. 0.1)</span></label>
+                      <input type="number" step="0.0001" min="0.0001" className="form-control form-control-sm"
+                        value={newUnit.qty_in_base_unit}
+                        onChange={e => setNewUnit(n => ({ ...n, qty_in_base_unit: e.target.value }))} placeholder="0.1" />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label small mb-1">Sale Price</label>
+                      <div className="input-group input-group-sm">
+                        <span className="input-group-text">₹</span>
+                        <input type="number" step="0.01" min="0" className="form-control"
+                          value={newUnit.sale_price}
+                          onChange={e => setNewUnit(n => ({ ...n, sale_price: e.target.value }))} placeholder="0.00" />
+                      </div>
+                    </div>
+                    <div className="col-md-1 text-center">
+                      <label className="form-label small mb-1 d-block">Default</label>
+                      <input type="checkbox" checked={newUnit.is_default}
+                        onChange={e => setNewUnit(n => ({ ...n, is_default: e.target.checked }))} />
+                    </div>
+                    <div className="col-md-2">
+                      <button type="button" className="btn btn-sm btn-primary w-100"
+                        onClick={addSaleUnit} disabled={suLoading}>
+                        <i className="bi bi-plus me-1" />Add Unit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {!id && (
+              <div className="alert alert-info mt-3 py-2 small">
+                <i className="bi bi-info-circle me-1" />
+                Save the product first, then come back to add sale units (e.g. 100g, 200g).
+              </div>
+            )}
 
             <div className="d-flex gap-2 mt-4">
               <button type="submit" className="btn btn-primary" disabled={loading}>

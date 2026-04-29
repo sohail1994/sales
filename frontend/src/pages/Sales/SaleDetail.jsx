@@ -11,9 +11,27 @@ export default function SaleDetail() {
   const [payForm, setPayForm] = useState({ amount: 0, payment_method: 'cash', payment_date: today(), notes: '' });
   const [showPay, setShowPay] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const load = () => api.get(`/sales/${id}`).then(r => setSale(r.data));
   useEffect(() => { load(); }, [id]);
+
+  const downloadPDF = async () => {
+    setPdfLoading(true);
+    try {
+      const { data } = await api.get(`/sales/${id}/invoice-pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${sale.invoice_no}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to download PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const handlePayment = async (e) => {
     e.preventDefault();
@@ -32,7 +50,7 @@ export default function SaleDetail() {
 
   if (!sale) return <div className="text-center py-5"><span className="spinner-border" /></div>;
 
-  const fmt = (n) => `$${Number(n).toFixed(2)}`;
+  const fmt = (n) => `₹${Number(n).toFixed(2)}`;
   const statusColor = { paid:'success', partial:'warning', pending:'danger', cancelled:'secondary' };
 
   return (
@@ -42,10 +60,13 @@ export default function SaleDetail() {
           <i className="bi bi-receipt me-2" />Invoice: {sale.invoice_no}
         </h5>
         <div className="d-flex gap-2">
-          <a href={`http://localhost:5000/api/sales/${id}/invoice-pdf`}
-             target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-danger">
-            <i className="bi bi-file-pdf me-1" />Download PDF
-          </a>
+          <button type="button" className="btn btn-sm btn-outline-danger"
+            onClick={downloadPDF} disabled={pdfLoading}>
+            {pdfLoading
+              ? <span className="spinner-border spinner-border-sm me-1" />
+              : <i className="bi bi-file-pdf me-1" />}
+            Download PDF
+          </button>
           {sale.status !== 'paid' && sale.status !== 'cancelled' && (
             <button className="btn btn-sm btn-success" onClick={() => setShowPay(true)}>
               <i className="bi bi-cash me-1" />Add Payment
@@ -97,7 +118,7 @@ export default function SaleDetail() {
           <div className="table-responsive">
             <table className="table table-sm align-middle">
               <thead className="table-light">
-                <tr><th>#</th><th>Product</th><th>Barcode</th><th>Qty</th><th>Unit Price</th><th>Discount</th><th>Total</th></tr>
+                <tr><th>#</th><th>Product</th><th>Barcode</th><th>Pack</th><th>Qty</th><th>Unit Price</th><th>Discount</th><th>Total</th></tr>
               </thead>
               <tbody>
                 {sale.items.map((item, i) => (
@@ -105,6 +126,16 @@ export default function SaleDetail() {
                     <td>{i + 1}</td>
                     <td>{item.product_name}</td>
                     <td><small className="font-monospace">{item.barcode}</small></td>
+                    <td>
+                      {item.sale_unit_label
+                        ? <span className="badge bg-info text-dark">{item.sale_unit_label}</span>
+                        : <span className="text-muted small">base</span>}
+                      {item.base_qty_deducted && item.sale_unit_factor ? (
+                        <small className="text-muted d-block">
+                          ({Number(item.base_qty_deducted).toFixed(4)} stock unit)
+                        </small>
+                      ) : null}
+                    </td>
                     <td>{item.quantity}</td>
                     <td>{fmt(item.unit_price)}</td>
                     <td>{fmt(item.discount)}</td>
@@ -113,12 +144,12 @@ export default function SaleDetail() {
                 ))}
               </tbody>
               <tfoot className="table-light fw-semibold">
-                <tr><td colSpan={6} className="text-end">Subtotal</td><td>{fmt(sale.subtotal)}</td></tr>
-                <tr><td colSpan={6} className="text-end">Discount</td><td>- {fmt(sale.discount)}</td></tr>
-                <tr><td colSpan={6} className="text-end">Tax</td><td>+ {fmt(sale.tax)}</td></tr>
-                <tr className="fs-5"><td colSpan={6} className="text-end fw-bold">Total</td><td className="fw-bold">{fmt(sale.total_amount)}</td></tr>
-                <tr><td colSpan={6} className="text-end text-success">Paid</td><td className="text-success">{fmt(sale.paid_amount)}</td></tr>
-                <tr><td colSpan={6} className="text-end text-danger">Due</td><td className="text-danger fw-bold">{fmt(sale.due_amount)}</td></tr>
+                <tr><td colSpan={7} className="text-end">Subtotal</td><td>{fmt(sale.subtotal)}</td></tr>
+                <tr><td colSpan={7} className="text-end">Discount</td><td>- {fmt(sale.discount)}</td></tr>
+                <tr><td colSpan={7} className="text-end">Tax</td><td>+ {fmt(sale.tax)}</td></tr>
+                <tr className="fs-5"><td colSpan={7} className="text-end fw-bold">Total</td><td className="fw-bold">{fmt(sale.total_amount)}</td></tr>
+                <tr><td colSpan={7} className="text-end text-success">Paid</td><td className="text-success">{fmt(sale.paid_amount)}</td></tr>
+                <tr><td colSpan={7} className="text-end text-danger">Due</td><td className="text-danger fw-bold">{fmt(sale.due_amount)}</td></tr>
               </tfoot>
             </table>
           </div>
@@ -140,7 +171,7 @@ export default function SaleDetail() {
                   <div className="col-12">
                     <label className="form-label">Amount *</label>
                     <div className="input-group">
-                      <span className="input-group-text">$</span>
+                      <span className="input-group-text">₹</span>
                       <input type="number" className="form-control" min="0.01" step="0.01" required
                         max={Number(sale.due_amount)}
                         value={payForm.amount}

@@ -69,10 +69,10 @@ export default function CustomerList() {
                     <td>{c.email || '-'}</td>
                     <td>
                       <span className={`fw-semibold ${Number(c.balance) > 0 ? 'text-danger' : 'text-success'}`}>
-                        ${Number(c.balance).toFixed(2)}
+                        ₹{Number(c.balance).toFixed(2)}
                       </span>
                     </td>
-                    <td>${Number(c.credit_limit).toFixed(2)}</td>
+                    <td>₹{Number(c.credit_limit).toFixed(2)}</td>
                     <td>
                       <Link to={`/customers/${c.id}/edit`} className="btn btn-sm btn-outline-primary me-1">
                         <i className="bi bi-pencil" />

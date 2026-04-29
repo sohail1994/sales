@@ -55,8 +55,8 @@ export default function Inventory() {
           {[
             { label: 'Total Products', value: summary.total_products, color: 'primary', icon: 'box-seam' },
             { label: 'Total Units', value: Number(summary.total_units || 0).toFixed(0), color: 'info', icon: 'stack' },
-            { label: 'Stock Value (Cost)', value: `$${Number(summary.total_value || 0).toFixed(2)}`, color: 'success', icon: 'currency-dollar' },
-            { label: 'Sale Value', value: `$${Number(summary.total_sale_value || 0).toFixed(2)}`, color: 'warning', icon: 'graph-up' },
+            { label: 'Stock Value (Cost)', value: `₹${Number(summary.total_value || 0).toFixed(2)}`, color: 'success', icon: 'currency-dollar' },
+            { label: 'Sale Value', value: `₹${Number(summary.total_sale_value || 0).toFixed(2)}`, color: 'warning', icon: 'graph-up' },
           ].map((s, i) => (
             <div key={i} className="col-md-3">
               <div className={`card border-0 bg-${s.color} bg-opacity-10`}>
@@ -118,15 +118,15 @@ export default function Inventory() {
                     <td><small className="font-monospace">{p.barcode}</small></td>
                     <td>{p.category_name || '-'}</td>
                     <td>
-                      <span className={`badge ${p.stock_qty <= p.min_stock ? 'bg-danger' : 'bg-success'} fs-6`}>
+                      <span className={`badge ${Number(p.stock_qty) <= Number(p.min_stock) ? 'bg-danger' : 'bg-success'} fs-6`}>
                         {p.stock_qty}
                       </span>
                     </td>
                     <td>{p.min_stock}</td>
                     <td>{p.unit}</td>
-                    <td>${Number(p.purchase_price).toFixed(2)}</td>
-                    <td>${Number(p.sale_price).toFixed(2)}</td>
-                    <td>${(Number(p.stock_qty) * Number(p.purchase_price)).toFixed(2)}</td>
+                    <td>₹{Number(p.purchase_price).toFixed(2)}</td>
+                    <td>₹{Number(p.sale_price).toFixed(2)}</td>
+                    <td>₹{(Number(p.stock_qty) * Number(p.purchase_price)).toFixed(2)}</td>
                     <td>
                       <button className="btn btn-sm btn-outline-primary me-1"
                         onClick={() => { setAdjustModal(p); setAdjustForm({ quantity: 0, type: 'remove', notes: '' }); }}>

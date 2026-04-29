@@ -21,8 +21,8 @@ export default function CustomerDue() {
       startY: 22,
       head: [['Customer', 'Phone', 'Invoices', 'Total Amount', 'Due Amount']],
       body: data.map(c => [c.name, c.phone||'-', c.total_invoices,
-        `$${Number(c.total_amount).toFixed(2)}`,
-        `$${Number(c.due_amount).toFixed(2)}`
+        `₹${Number(c.total_amount).toFixed(2)}`,
+        `₹${Number(c.due_amount).toFixed(2)}`
       ]),
     });
     doc.save('customer-due-report.pdf');
@@ -50,7 +50,7 @@ export default function CustomerDue() {
         <div className="col-md-3">
           <div className="card border-danger border-2">
             <div className="card-body text-center">
-              <div className="fw-bold fs-4 text-danger">${total.toFixed(2)}</div>
+              <div className="fw-bold fs-4 text-danger">₹{total.toFixed(2)}</div>
               <div className="text-muted small">Total Outstanding Due</div>
             </div>
           </div>
@@ -83,8 +83,8 @@ export default function CustomerDue() {
                     <td>{c.phone || '-'}</td>
                     <td>{c.email || '-'}</td>
                     <td>{c.total_invoices}</td>
-                    <td>${Number(c.total_amount).toFixed(2)}</td>
-                    <td className="text-danger fw-bold">${Number(c.due_amount).toFixed(2)}</td>
+                    <td>₹{Number(c.total_amount).toFixed(2)}</td>
+                    <td className="text-danger fw-bold">₹{Number(c.due_amount).toFixed(2)}</td>
                     <td>
                       <Link to={`/customers`} className="btn btn-sm btn-outline-primary">
                         <i className="bi bi-eye" />
@@ -102,7 +102,7 @@ export default function CustomerDue() {
                 <tfoot className="table-light fw-bold">
                   <tr>
                     <td colSpan={6} className="text-end">Total Due:</td>
-                    <td className="text-danger">${total.toFixed(2)}</td>
+                    <td className="text-danger">₹{total.toFixed(2)}</td>
                     <td></td>
                   </tr>
                 </tfoot>
