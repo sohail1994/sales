@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import BarcodePrintSheet from '../Products/BarcodePrintSheet';
 
 export default function Inventory() {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ export default function Inventory() {
   const [total, setTotal] = useState(0);
   const [adjustModal, setAdjustModal] = useState(null);
   const [adjustForm, setAdjustForm] = useState({ quantity: 0, type: 'remove', notes: '' });
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showPrint, setShowPrint] = useState(false);
   const LIMIT = 20;
 
   const load = useCallback(async () => {
@@ -46,9 +49,26 @@ export default function Inventory() {
 
   const pages = Math.ceil(total / LIMIT);
 
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const toggleAll = () => {
+    setSelectedIds(prev => prev.length === items.length ? [] : items.map(p => p.id));
+  };
+  const selectedProducts = items
+    .filter(p => selectedIds.includes(p.id))
+    .map(p => ({ ...p, defaultQty: Number(p.stock_qty) || 1 }));
+
   return (
     <div>
-      <h5 className="fw-bold mb-4"><i className="bi bi-archive me-2" />Inventory</h5>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h5 className="fw-bold mb-0"><i className="bi bi-archive me-2" />Inventory</h5>
+        {selectedIds.length > 0 && (
+          <button className="btn btn-outline-success btn-sm" onClick={() => setShowPrint(true)}>
+            <i className="bi bi-printer me-1" />Print {selectedIds.length} Label{selectedIds.length > 1 ? 's' : ''}
+          </button>
+        )}
+      </div>
 
       {summary && (
         <div className="row g-3 mb-4">
@@ -95,6 +115,11 @@ export default function Inventory() {
             <table className="table table-hover align-middle">
               <thead className="table-dark">
                 <tr>
+                  <th>
+                    <input type="checkbox" className="form-check-input"
+                      checked={items.length > 0 && selectedIds.length === items.length}
+                      onChange={toggleAll} />
+                  </th>
                   <th>Product</th><th>Barcode</th><th>Category</th>
                   <th>Stock</th><th>Min Stock</th><th>Unit</th>
                   <th>Cost Price</th><th>Sale Price</th><th>Stock Value</th><th>Actions</th>
@@ -103,6 +128,11 @@ export default function Inventory() {
               <tbody>
                 {items.map(p => (
                   <tr key={p.id} className={p.stock_qty <= p.min_stock ? 'table-warning' : ''}>
+                    <td>
+                      <input type="checkbox" className="form-check-input"
+                        checked={selectedIds.includes(p.id)}
+                        onChange={() => toggleSelect(p.id)} />
+                    </td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
                         {p.image
@@ -201,6 +231,13 @@ export default function Inventory() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPrint && (
+        <BarcodePrintSheet
+          products={selectedProducts}
+          onClose={() => setShowPrint(false)}
+        />
       )}
     </div>
   );

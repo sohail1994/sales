@@ -40,7 +40,7 @@ exports.getOne = async (req, res) => {
   if (!rows.length) return res.status(404).json({ message: 'Purchase not found' });
 
   const [items] = await db.query(
-    `SELECT pi.*, pr.name AS product_name, pr.barcode
+    `SELECT pi.*, pr.name AS product_name, pr.barcode, pr.sale_price
      FROM purchase_items pi
      LEFT JOIN products pr ON pr.id=pi.product_id
      WHERE pi.purchase_id=?`,

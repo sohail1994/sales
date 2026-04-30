@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import BarcodePrintSheet from '../Products/BarcodePrintSheet';
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -10,6 +11,7 @@ export default function PurchaseDetail() {
   const [purchase, setPurchase] = useState(null);
   const [payForm, setPayForm] = useState({ amount: 0, payment_method: 'cash', payment_date: today(), notes: '' });
   const [showPay, setShowPay] = useState(false);
+  const [showPrint, setShowPrint] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const load = () => api.get(`/purchases/${id}`).then(r => setPurchase(r.data));
@@ -43,6 +45,9 @@ export default function PurchaseDetail() {
               <i className="bi bi-cash me-1" />Add Payment
             </button>
           )}
+          <button className="btn btn-sm btn-outline-secondary" onClick={() => setShowPrint(true)}>
+            <i className="bi bi-printer me-1" />Print Labels
+          </button>
           <Link to="/purchases" className="btn btn-sm btn-outline-secondary">Back</Link>
         </div>
       </div>
@@ -150,6 +155,19 @@ export default function PurchaseDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPrint && (
+        <BarcodePrintSheet
+          products={(purchase.items || []).map(item => ({
+            id: item.product_id,
+            name: item.product_name,
+            barcode: item.barcode,
+            sale_price: item.sale_price,
+            defaultQty: item.quantity,
+          }))}
+          onClose={() => setShowPrint(false)}
+        />
       )}
     </div>
   );
