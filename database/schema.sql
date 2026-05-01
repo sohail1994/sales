@@ -141,6 +141,10 @@ CREATE TABLE IF NOT EXISTS sale_items (
   discount DECIMAL(12,2) DEFAULT 0.00,
   total_price DECIMAL(12,2) NOT NULL,
   cost_price DECIMAL(12,2) DEFAULT 0.00,
+  sale_unit_id INT NULL,
+  sale_unit_label VARCHAR(100) NULL,
+  sale_unit_factor DECIMAL(12,4) NULL,
+  base_qty_deducted DECIMAL(12,4) NULL,
   FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
@@ -235,6 +239,7 @@ CREATE TABLE IF NOT EXISTS product_sale_units (
 -- ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS sale_unit_label VARCHAR(100) NULL;
 -- ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS sale_unit_factor DECIMAL(12,4) NULL;
 -- ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS base_qty_deducted DECIMAL(12,4) NULL;
+-- (All columns above are now included in the CREATE TABLE definition above)
 -- ============================================================
 
 -- ============================================================
